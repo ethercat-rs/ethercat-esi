@@ -1,0 +1,18 @@
+[package]
+name = "ethercat-esi"
+description = "Handle EtherCAT Slave Information (ESI)"
+version = "0.0.0"
+authors = ["slowtec GmbH <post@slowtec.de>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+keywords = ["fieldbus", "ethercat", "industrial"]
+homepage = "https://github.com/ethercat-rs/ethercat-esi"
+repository = "https://github.com/ethercat-rs/ethercat-esi"
+edition = "2018"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde-xml-rs = "0.3"
+
+[badges]
+maintenance = { status = "actively-developed" }
