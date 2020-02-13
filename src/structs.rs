@@ -22,7 +22,9 @@ pub struct Vendor {
 /// Further Slave descriptions.
 #[derive(Debug, Clone)]
 pub struct Descriptions {
-    // TODO
+    pub groups: Vec<Group>,
+    pub devices: Vec<Device>,
+    pub modules: Vec<Module>,
 }
 
 /// Data image.
@@ -32,6 +34,27 @@ pub enum Image {
     Image16x14(String),
     ImageFile16x14(String),
     ImageData16x14(HexBinary),
+}
+
+#[derive(Debug, Clone)]
+pub struct Group {
+    pub sort_order: Option<i32>,
+    pub parent_group: Option<String>,
+    pub r#type: String,
+    pub name: String,
+    pub comment: Option<String>,
+    pub image: Option<Image>,
+    // TODO: Optional 'VendorSpecific'
+}
+
+#[derive(Debug, Clone)]
+pub struct Device {
+    // TODO
+}
+
+#[derive(Debug, Clone)]
+pub struct Module {
+    // TODO
 }
 
 // Restrictions:
