@@ -11,7 +11,7 @@ pub struct EtherCatInfo {
 #[derive(Debug, Clone)]
 pub struct Vendor {
     pub file_version: Option<u32>,
-    pub id: HexDecValue, // TODO: use u32
+    pub id: u32,
     pub name: Option<String>,
     pub comment: Option<String>,
     pub url: Option<String>,
@@ -52,8 +52,8 @@ pub struct Device {
     pub physics: Option<String>,
     pub name: String,
     pub desc: String,
-    pub product_code: String, // TODO: use u32
-    pub revision_no: String,  // TODO: use u32
+    pub product_code: u32,
+    pub revision_no: u32,
     pub sm: Vec<Sm>,
     pub rx_pdo: Vec<Pdo>,
     pub tx_pdo: Vec<Pdo>,
@@ -63,8 +63,8 @@ pub struct Device {
 #[derive(Debug, Clone)]
 pub struct Sm {
     pub enable: bool,
-    pub start_address: HexDecValue, // TODO: use u16
-    pub control_byte: HexDecValue,  // TODO: use u8
+    pub start_address: u16,
+    pub control_byte: u8,
     pub default_size: Option<usize>,
 }
 
@@ -74,7 +74,7 @@ pub struct Pdo {
     pub sm: usize,
     pub fixed: bool,
     pub mandatory: bool,
-    pub index: HexDecValue, // TODO: use u16
+    pub index: u16,
     pub name: Option<String>,
     pub entries: Vec<Entry>,
 }
@@ -88,7 +88,7 @@ pub struct Sdo {
 /// Entry of an Object Dictionary.
 #[derive(Debug, Clone)]
 pub struct Entry {
-    pub index: HexDecValue, // TODO: use u16
+    pub index: u16,
     pub sub_index: Option<usize>,
     pub bit_len: usize,
     pub name: Option<String>,
@@ -99,13 +99,6 @@ pub struct Entry {
 pub struct Module {
     // TODO
 }
-
-// Restrictions:
-// "[+-]?[0-9]{1,}"
-// "#x[0-9|a-f|A-F]{1,}"
-/// Hex-encoded value.
-#[derive(Debug, Clone, PartialEq)]
-pub struct HexDecValue(pub String);
 
 /// HexBinary represents arbitrary hex-encoded binary data.
 ///

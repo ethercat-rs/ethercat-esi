@@ -3,6 +3,8 @@ use crate::structs as S;
 use std::{
     convert::{TryFrom, TryInto},
     io::{Error, ErrorKind, Result},
+    num::ParseIntError,
+    str::FromStr,
 };
 
 impl TryFrom<EtherCATInfo> for S::EtherCatInfo {
@@ -23,7 +25,7 @@ impl TryFrom<Vendor> for S::Vendor {
         let image = v.image()?;
         Ok(S::Vendor {
             file_version: v.FileVersion,
-            id: S::HexDecValue(v.Id),
+            id: u32_from_hex_dec_value(&v.Id)?,
             name: v.Name,
             comment: v.Comment,
             url: v.URL,
@@ -79,8 +81,8 @@ impl TryFrom<Descriptions> for S::Description {
             .items
             .unwrap_or_else(|| vec![])
             .into_iter()
-            .map(S::Device::from)
-            .collect();
+            .map(S::Device::try_from)
+            .collect::<Result<_>>()?;
 
         let modules: Vec<_> = d
             .Modules
@@ -114,66 +116,78 @@ impl TryFrom<Group> for S::Group {
     }
 }
 
-impl From<Device> for S::Device {
-    fn from(d: Device) -> Self {
-        S::Device {
+impl TryFrom<Device> for S::Device {
+    type Error = Error;
+    fn try_from(d: Device) -> Result<Self> {
+        Ok(S::Device {
             physics: d.Physics,
             name: d.Name,
             desc: d.Type.Description,
-            product_code: d.Type.ProductCode,
-            revision_no: d.Type.RevisionNo,
-            sm: d.Sm.into_iter().map(S::Sm::from).collect(),
+            product_code: u32_from_hex_dec_value(&d.Type.ProductCode)?,
+            revision_no: u32_from_hex_dec_value(&d.Type.RevisionNo)?,
+            sm: d
+                .Sm
+                .into_iter()
+                .map(S::Sm::try_from)
+                .collect::<Result<_>>()?,
             rx_pdo: d
                 .RxPdo
                 .unwrap_or_else(|| vec![])
                 .into_iter()
-                .map(S::Pdo::from)
-                .collect(),
+                .map(S::Pdo::try_from)
+                .collect::<Result<_>>()?,
             tx_pdo: d
                 .TxPdo
                 .unwrap_or_else(|| vec![])
                 .into_iter()
-                .map(S::Pdo::from)
-                .collect(),
-        }
+                .map(S::Pdo::try_from)
+                .collect::<Result<_>>()?,
+        })
     }
 }
 
-impl From<Sm> for S::Sm {
-    fn from(sm: Sm) -> Self {
-        S::Sm {
-            start_address: S::HexDecValue(sm.StartAddress),
-            control_byte: S::HexDecValue(sm.ControlByte),
+impl TryFrom<Sm> for S::Sm {
+    type Error = Error;
+    fn try_from(sm: Sm) -> Result<Self> {
+        Ok(S::Sm {
+            start_address: u16_from_hex_dec_value(&sm.StartAddress)?,
+            control_byte: u8_from_hex_dec_value(&sm.ControlByte)?,
             default_size: sm.DefaultSize,
             enable: sm.Enable == Some(1),
-        }
+        })
     }
 }
 
-impl From<Pdo> for S::Pdo {
-    fn from(pdo: Pdo) -> Self {
-        S::Pdo {
+impl TryFrom<Pdo> for S::Pdo {
+    type Error = Error;
+    fn try_from(pdo: Pdo) -> Result<Self> {
+        Ok(S::Pdo {
             fixed: pdo.Fixed == 1,
             mandatory: pdo.Mandatory == 1,
             name: pdo
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),
             sm: pdo.Sm,
-            index: S::HexDecValue(pdo.Index),
-            entries: pdo.Entry.into_iter().map(S::Entry::from).collect(),
-        }
+            index: u16_from_hex_dec_value(&pdo.Index)?,
+            entries: pdo
+                .Entry
+                .into_iter()
+                .map(S::Entry::try_from)
+                .collect::<Result<_>>()?,
+        })
     }
 }
 
-impl From<Entry> for S::Entry {
-    fn from(e: Entry) -> Self {
-        S::Entry {
-            index: S::HexDecValue(e.Index),
+impl TryFrom<Entry> for S::Entry {
+    type Error = Error;
+    fn try_from(e: Entry) -> Result<Self> {
+        Ok(S::Entry {
+            index: u16_from_hex_dec_value(&e.Index)?,
             sub_index: e.SubIndex,
             bit_len: e.BitLen,
             name: e.Name,
             data_type: e.DataType,
-        }
+        })
     }
 }
 
@@ -181,5 +195,78 @@ impl TryFrom<Module> for S::Module {
     type Error = Error;
     fn try_from(_: Module) -> Result<Self> {
         Ok(S::Module {})
+    }
+}
+
+fn u32_from_hex_dec_value(v: &str) -> Result<u32> {
+    from_hex_dec_value(v, |x| u32::from_str_radix(x, 16))
+}
+
+fn u16_from_hex_dec_value(v: &str) -> Result<u16> {
+    from_hex_dec_value(v, |x| u16::from_str_radix(x, 16))
+}
+
+fn u8_from_hex_dec_value(v: &str) -> Result<u8> {
+    from_hex_dec_value(v, |x| u8::from_str_radix(x, 16))
+}
+
+fn from_hex_dec_value<T, F>(v: &str, parse_hex: F) -> Result<T>
+where
+    T: FromStr<Err = ParseIntError>,
+    F: Fn(&str) -> std::result::Result<T, ParseIntError>,
+{
+    let mut chars = v.chars();
+    match (chars.next(), chars.next(), chars.next()) {
+        (Some('x'), _, _) | (Some('X'), _, _) => parse_hex(&v[1..]),
+        (Some('#'), Some('x'), _)
+        | (Some('#'), Some('X'), _)
+        | (Some('0'), Some('x'), _)
+        | (Some('0'), Some('X'), _) => parse_hex(&v[2..]),
+        _ => FromStr::from_str(v),
+    }
+    .map_err(|e| Error::new(ErrorKind::Other, e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_u32_from_hex_dec_values() {
+        assert_eq!(u32_from_hex_dec_value("0").unwrap(), 0);
+        assert_eq!(u32_from_hex_dec_value("1").unwrap(), 1);
+        assert_eq!(u32_from_hex_dec_value("0x1").unwrap(), 0x1);
+        assert_eq!(u32_from_hex_dec_value("0X1").unwrap(), 0x1);
+        assert_eq!(u32_from_hex_dec_value("#x1").unwrap(), 0x1);
+        assert_eq!(u32_from_hex_dec_value("#X1").unwrap(), 0x1);
+        assert_eq!(u32_from_hex_dec_value("#x005").unwrap(), 0x5);
+        assert_eq!(u32_from_hex_dec_value("xF75").unwrap(), 0xf75);
+        assert_eq!(u32_from_hex_dec_value("XF75").unwrap(), 0xf75);
+    }
+
+    #[test]
+    fn parse_u16() {
+        assert_eq!(u16_from_hex_dec_value("0").unwrap(), 0);
+        assert_eq!(u16_from_hex_dec_value("1").unwrap(), 1);
+        assert_eq!(u16_from_hex_dec_value("0x1").unwrap(), 0x1);
+        assert_eq!(u16_from_hex_dec_value("0X1").unwrap(), 0x1);
+        assert_eq!(u16_from_hex_dec_value("#x1").unwrap(), 0x1);
+        assert_eq!(u16_from_hex_dec_value("#X1").unwrap(), 0x1);
+        assert_eq!(u16_from_hex_dec_value("#x005").unwrap(), 0x5);
+        assert_eq!(u16_from_hex_dec_value("xF75").unwrap(), 0xf75);
+        assert_eq!(u16_from_hex_dec_value("XF75").unwrap(), 0xf75);
+    }
+
+    #[test]
+    fn parse_u8() {
+        assert_eq!(u8_from_hex_dec_value("0").unwrap(), 0);
+        assert_eq!(u8_from_hex_dec_value("1").unwrap(), 1);
+        assert_eq!(u8_from_hex_dec_value("0x1").unwrap(), 0x1);
+        assert_eq!(u8_from_hex_dec_value("0X1").unwrap(), 0x1);
+        assert_eq!(u8_from_hex_dec_value("#x1").unwrap(), 0x1);
+        assert_eq!(u8_from_hex_dec_value("#X1").unwrap(), 0x1);
+        assert_eq!(u8_from_hex_dec_value("#x005").unwrap(), 0x5);
+        assert_eq!(u8_from_hex_dec_value("xF7").unwrap(), 0xf7);
+        assert_eq!(u8_from_hex_dec_value("XF7").unwrap(), 0xf7);
     }
 }
