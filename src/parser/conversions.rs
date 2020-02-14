@@ -1,4 +1,3 @@
-
 use super::*;
 use crate::structs as S;
 use std::{
@@ -13,7 +12,7 @@ impl TryFrom<EtherCATInfo> for S::EtherCatInfo {
             version: x.Version,
             info_reference: x.InfoReference,
             vendor: x.Vendor.try_into()?,
-            decriptions: x.Descriptions.try_into()?,
+            description: x.Descriptions.try_into()?,
         })
     }
 }
@@ -62,19 +61,26 @@ impl Group {
     }
 }
 
-impl TryFrom<Descriptions> for S::Descriptions {
+impl TryFrom<Descriptions> for S::Description {
     type Error = Error;
     fn try_from(d: Descriptions) -> Result<Self> {
         let groups: Vec<_> = d
             .Groups
-            .items
-            .map(|items| items.into_iter().map(S::Group::try_from).collect())
+            .map(|groups| {
+                groups
+                    .items
+                    .map(|items| items.into_iter().map(S::Group::try_from).collect())
+                    .unwrap_or_else(|| Ok(vec![]))
+            })
             .unwrap_or_else(|| Ok(vec![]))?;
+
         let devices: Vec<_> = d
             .Devices
             .items
-            .map(|items| items.into_iter().map(S::Device::try_from).collect())
-            .unwrap_or_else(|| Ok(vec![]))?;
+            .unwrap_or_else(|| vec![])
+            .into_iter()
+            .map(S::Device::from)
+            .collect();
 
         let modules: Vec<_> = d
             .Modules
@@ -85,7 +91,7 @@ impl TryFrom<Descriptions> for S::Descriptions {
             })
             .unwrap_or_else(|| Ok(vec![]))?;
 
-        Ok(S::Descriptions {
+        Ok(S::Description {
             groups,
             devices,
             modules,
@@ -108,10 +114,66 @@ impl TryFrom<Group> for S::Group {
     }
 }
 
-impl TryFrom<Device> for S::Device {
-    type Error = Error;
-    fn try_from(_: Device) -> Result<Self> {
-        Ok(S::Device {})
+impl From<Device> for S::Device {
+    fn from(d: Device) -> Self {
+        S::Device {
+            physics: d.Physics,
+            name: d.Name,
+            desc: d.Type.Description,
+            product_code: d.Type.ProductCode,
+            revision_no: d.Type.RevisionNo,
+            sm: d.Sm.into_iter().map(S::Sm::from).collect(),
+            rx_pdo: d
+                .RxPdo
+                .unwrap_or_else(|| vec![])
+                .into_iter()
+                .map(S::Pdo::from)
+                .collect(),
+            tx_pdo: d
+                .TxPdo
+                .unwrap_or_else(|| vec![])
+                .into_iter()
+                .map(S::Pdo::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<Sm> for S::Sm {
+    fn from(sm: Sm) -> Self {
+        S::Sm {
+            start_address: S::HexDecValue(sm.StartAddress),
+            control_byte: S::HexDecValue(sm.ControlByte),
+            default_size: sm.DefaultSize,
+            enable: sm.Enable == Some(1),
+        }
+    }
+}
+
+impl From<Pdo> for S::Pdo {
+    fn from(pdo: Pdo) -> Self {
+        S::Pdo {
+            fixed: pdo.Fixed == 1,
+            mandatory: pdo.Mandatory == 1,
+            name: pdo
+                .Name
+                .and_then(|n| if n.is_empty() { None } else { Some(n) }),
+            sm: pdo.Sm,
+            index: S::HexDecValue(pdo.Index),
+            entries: pdo.Entry.into_iter().map(S::Entry::from).collect(),
+        }
+    }
+}
+
+impl From<Entry> for S::Entry {
+    fn from(e: Entry) -> Self {
+        S::Entry {
+            index: S::HexDecValue(e.Index),
+            sub_index: e.SubIndex,
+            bit_len: e.BitLen,
+            name: e.Name,
+            data_type: e.DataType,
+        }
     }
 }
 

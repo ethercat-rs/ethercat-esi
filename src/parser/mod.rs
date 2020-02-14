@@ -18,9 +18,9 @@ pub struct EtherCATInfo {
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, PartialEq)]
 struct Vendor {
-    FileVersion: u32,
+    FileVersion: Option<u32>,
     Id: String,
-    Name: String,
+    Name: Option<String>,
     Comment: Option<String>,
     URL: Option<String>,
     DescriptionURL: Option<String>,
@@ -32,7 +32,7 @@ struct Vendor {
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Descriptions {
-    Groups: Groups,
+    Groups: Option<Groups>,
     Devices: Devices,
     Modules: Option<Modules>,
 }
@@ -74,7 +74,55 @@ pub struct Group {
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Device {
-    // TODO
+    Physics: Option<String>,
+    Type: DeviceType,
+    Name: String,
+    RxPdo: Option<Vec<RxPdo>>,
+    TxPdo: Option<Vec<TxPdo>>,
+    Sm: Vec<Sm>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct DeviceType {
+    ModulePdoGroup: Option<String>,
+    ProductCode: String,
+    RevisionNo: String,
+    #[serde(rename = "$value")]
+    Description: String,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Sm {
+    Enable: Option<u8>,
+    StartAddress: String,
+    ControlByte: String,
+    DefaultSize: Option<usize>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Entry {
+    Index: String,
+    SubIndex: Option<usize>,
+    BitLen: usize,
+    Name: Option<String>,
+    DataType: Option<String>,
+}
+
+pub type RxPdo = Pdo;
+pub type TxPdo = Pdo;
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Pdo {
+    Sm: usize,
+    Fixed: u8,
+    Mandatory: u8,
+    Index: String,
+    Name: Option<String>,
+    Entry: Vec<Entry>,
 }
 
 #[allow(non_snake_case)]
@@ -118,9 +166,9 @@ mod tests {
                 Version: Some("1.11".to_string()),
                 InfoReference: Some("FooBar.xml".to_string()),
                 Vendor: Vendor {
-                    FileVersion: 99,
+                    FileVersion: Some(99),
                     Id: "#x00000000".to_string(),
-                    Name: "Vendor Foo".to_string(),
+                    Name: Some("Vendor Foo".to_string()),
                     Comment: None,
                     URL: None,
                     DescriptionURL: None,
@@ -129,7 +177,7 @@ mod tests {
                     ImageData16x14: Some("7D".to_string()),
                 },
                 Descriptions: Descriptions {
-                    Groups: Groups { items: None },
+                    Groups: Some(Groups { items: None }),
                     Devices: Devices { items: None },
                     Modules: None,
                 }
@@ -150,9 +198,9 @@ mod tests {
         assert_eq!(
             vendor,
             Vendor {
-                FileVersion: 45,
+                FileVersion: Some(45),
                 Id: "#x00000999".to_string(),
-                Name: "Vendor Name".to_string(),
+                Name: Some("Vendor Name".to_string()),
                 Comment: None,
                 URL: None,
                 DescriptionURL: None,
@@ -180,7 +228,7 @@ mod tests {
         assert_eq!(
             descriptions,
             Descriptions {
-                Groups: Groups {
+                Groups: Some(Groups {
                     items: Some(vec![Group {
                         SortOrder: Some(0),
                         ParentGroup: None,
@@ -191,9 +239,121 @@ mod tests {
                         ImageFile16x14: None,
                         ImageData16x14: Some("44".to_string()),
                     }]),
-                },
+                }),
                 Devices: Devices { items: None },
                 Modules: None,
+            }
+        );
+    }
+
+    #[test]
+    fn entry() {
+        let s = r##"
+          <Entry>
+            <Index>#xf200</Index>
+            <SubIndex>2</SubIndex>
+            <BitLen>1</BitLen>
+            <Name></Name>
+            <DataType>BOOL</DataType>
+          </Entry>"##;
+        let entry: Entry = from_str(s).unwrap();
+        assert_eq!(
+            entry,
+            Entry {
+                Index: "#xf200".to_string(),
+                SubIndex: Some(2),
+                BitLen: 1,
+                Name: Some("".to_string()),
+                DataType: Some("BOOL".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn rx_pdo() {
+        let s = r##"
+        <RxPdo Sm="2" Fixed="1" Mandatory="1">
+          <Index>#x16ff</Index>
+          <Name></Name>
+          <Entry>
+            <Index>#xf200</Index>
+            <SubIndex>3</SubIndex>
+            <BitLen>1</BitLen>
+            <Name></Name>
+            <DataType>BOOL</DataType>
+          </Entry>
+        </RxPdo>"##;
+        let pdo: RxPdo = from_str(s).unwrap();
+        assert_eq!(
+            pdo,
+            RxPdo {
+                Sm: 2,
+                Fixed: 1,
+                Mandatory: 1,
+                Index: "#x16ff".to_string(),
+                Name: Some("".to_string()),
+                Entry: vec![Entry {
+                    Index: "#xf200".to_string(),
+                    SubIndex: Some(3),
+                    BitLen: 1,
+                    Name: Some("".to_string()),
+                    DataType: Some("BOOL".to_string()),
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn device() {
+        let s = r##"
+        <Device>
+          <Type ProductCode="#x45" RevisionNo="#x001">Foo</Type>
+          <Name>Bar</Name>
+          <Sm Enable="1" StartAddress="#x1000" ControlByte="#x26" DefaultSize="512" />
+          <Sm Enable="1" StartAddress="#x1400" ControlByte="#x22" DefaultSize="512" />
+          <Sm            StartAddress="#x1800" ControlByte="#x64"                 />
+          <Sm Enable="0" StartAddress="#x2400" ControlByte="#x20" DefaultSize="0" />
+        </Device>"##;
+        let device: Device = from_str(s).unwrap();
+        assert_eq!(
+            device,
+            Device {
+                Physics: None,
+                RxPdo: None,
+                TxPdo: None,
+                Sm: vec![
+                    Sm {
+                        Enable: Some(1),
+                        StartAddress: "#x1000".to_string(),
+                        ControlByte: "#x26".to_string(),
+                        DefaultSize: Some(512),
+                    },
+                    Sm {
+                        Enable: Some(1),
+                        StartAddress: "#x1400".to_string(),
+                        ControlByte: "#x22".to_string(),
+                        DefaultSize: Some(512),
+                    },
+                    Sm {
+                        Enable: None,
+                        StartAddress: "#x1800".to_string(),
+                        ControlByte: "#x64".to_string(),
+                        DefaultSize: None,
+                    },
+                    Sm {
+                        Enable: Some(0),
+                        StartAddress: "#x2400".to_string(),
+                        ControlByte: "#x20".to_string(),
+                        DefaultSize: Some(0),
+                    }
+                ],
+                Name: "Bar".to_string(),
+                Type: DeviceType {
+                    Description: "Foo".to_string(),
+                    ModulePdoGroup: None,
+                    ProductCode: "#x45".to_string(),
+                    RevisionNo: "#x001".to_string(),
+                }
             }
         );
     }
