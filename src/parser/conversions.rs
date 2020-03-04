@@ -1,11 +1,6 @@
 use super::*;
 use crate::structs as S;
-use std::{
-    convert::{TryFrom, TryInto},
-    io::{Error, ErrorKind, Result},
-    num::ParseIntError,
-    str::FromStr,
-};
+use std::{convert::TryFrom, num::ParseIntError, str::FromStr};
 
 impl TryFrom<EtherCATInfo> for S::EtherCatInfo {
     type Error = Error;
@@ -51,15 +46,30 @@ impl Vendor {
 
 impl Group {
     fn image(&self) -> Result<Option<S::Image>> {
-        match (&self.Image16x14, &self.ImageFile16x14, &self.ImageData16x14) {
-            (None, None, None) => Ok(None),
-            (Some(img), None, None) => Ok(Some(S::Image::Image16x14(img.clone()))),
-            (None, Some(img), None) => Ok(Some(S::Image::ImageFile16x14(img.clone()))),
-            (None, None, Some(img)) => {
-                Ok(Some(S::Image::ImageData16x14(S::HexBinary(img.clone()))))
-            }
-            _ => Err(Error::new(ErrorKind::Other, "Multiple images found")),
+        let img = self.items.iter().filter(|p| match p {
+            GroupProperty::Image16x14(_)
+            | GroupProperty::ImageFile16x14(_)
+            | GroupProperty::ImageData16x14(_) => true,
+            _ => false,
+        });
+        if img.clone().count() > 1 {
+            return Err(Error::new(ErrorKind::Other, "Multiple images found"));
         }
+        for p in img {
+            match p {
+                GroupProperty::Image16x14(img) => {
+                    return Ok(Some(S::Image::Image16x14(img.clone())))
+                }
+                GroupProperty::ImageFile16x14(img) => {
+                    return Ok(Some(S::Image::ImageFile16x14(img.clone())))
+                }
+                GroupProperty::ImageData16x14(img) => {
+                    return Ok(Some(S::Image::ImageData16x14(S::HexBinary(img.clone()))))
+                }
+                _ => {}
+            }
+        }
+        Ok(None)
     }
 }
 
@@ -105,12 +115,51 @@ impl TryFrom<Group> for S::Group {
     type Error = Error;
     fn try_from(g: Group) -> Result<Self> {
         let image = g.image()?;
+        let comment = g
+            .items
+            .iter()
+            .filter_map(|p| {
+                if let GroupProperty::Comment(c) = p {
+                    Some(c)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .nth(0);
+
+        let props = g.items.iter();
+        let name = props
+            .clone()
+            .filter_map(|p| {
+                if let GroupProperty::Name(Name { value, .. }) = p {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .nth(0)
+            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory group name not found"))?;
+
+        let r#type = props
+            .filter_map(|p| {
+                if let GroupProperty::Type(t) = p {
+                    Some(t)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .nth(0)
+            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory group type not found"))?;
+
         Ok(S::Group {
             sort_order: g.SortOrder,
-            name: g.Name,
-            comment: g.Comment,
             parent_group: g.ParentGroup,
-            r#type: g.Type,
+            name,
+            comment,
+            r#type,
             image,
         })
     }
@@ -119,29 +168,92 @@ impl TryFrom<Group> for S::Group {
 impl TryFrom<Device> for S::Device {
     type Error = Error;
     fn try_from(d: Device) -> Result<Self> {
+        let props = d.items.iter();
+        let name = props
+            .clone()
+            .filter_map(|p| {
+                if let DeviceProperty::Name(Name { value, .. }) = p {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .nth(0)
+            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory device name not found"))?;
+        let d_type = props
+            .clone()
+            .filter_map(|p| {
+                if let DeviceProperty::Type(t) = p {
+                    Some(t)
+                } else {
+                    None
+                }
+            })
+            .nth(0)
+            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory device type not found"))?;
+
+        let product_code = u32_from_hex_dec_value(&d_type.ProductCode)?;
+        let revision_no = u32_from_hex_dec_value(&d_type.RevisionNo)?;
+        let desc = d_type.Description.to_owned();
+
+        let sm = props
+            .clone()
+            .filter_map(|p| {
+                if let DeviceProperty::Sm(sm) = p {
+                    Some(sm)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .nth(0)
+            .unwrap_or_else(|| vec![])
+            .into_iter()
+            .map(S::Sm::try_from)
+            .collect::<Result<_>>()?;
+
+        let rx_pdo = props
+            .clone()
+            .filter_map(|p| {
+                if let DeviceProperty::RxPdo(pdo) = p {
+                    Some(pdo)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .nth(0)
+            .unwrap_or_else(|| vec![])
+            .into_iter()
+            .map(S::Pdo::try_from)
+            .collect::<Result<_>>()?;
+
+        let tx_pdo = props
+            .clone()
+            .filter_map(|p| {
+                if let DeviceProperty::TxPdo(pdo) = p {
+                    Some(pdo)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .nth(0)
+            .unwrap_or_else(|| vec![])
+            .into_iter()
+            .map(S::Pdo::try_from)
+            .collect::<Result<_>>()?;
+
         Ok(S::Device {
             physics: d.Physics,
-            name: d.Name,
-            desc: d.Type.Description,
-            product_code: u32_from_hex_dec_value(&d.Type.ProductCode)?,
-            revision_no: u32_from_hex_dec_value(&d.Type.RevisionNo)?,
-            sm: d
-                .Sm
-                .into_iter()
-                .map(S::Sm::try_from)
-                .collect::<Result<_>>()?,
-            rx_pdo: d
-                .RxPdo
-                .unwrap_or_else(|| vec![])
-                .into_iter()
-                .map(S::Pdo::try_from)
-                .collect::<Result<_>>()?,
-            tx_pdo: d
-                .TxPdo
-                .unwrap_or_else(|| vec![])
-                .into_iter()
-                .map(S::Pdo::try_from)
-                .collect::<Result<_>>()?,
+            name,
+            desc,
+            product_code,
+            revision_no,
+            sm,
+            rx_pdo,
+            tx_pdo,
         })
     }
 }
@@ -163,7 +275,7 @@ impl TryFrom<Pdo> for S::Pdo {
     fn try_from(pdo: Pdo) -> Result<Self> {
         Ok(S::Pdo {
             fixed: pdo.Fixed == 1,
-            mandatory: pdo.Mandatory == 1,
+            mandatory: pdo.Mandatory == Some(1),
             name: pdo
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),

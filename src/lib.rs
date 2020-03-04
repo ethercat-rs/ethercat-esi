@@ -38,7 +38,10 @@
 //! }
 //! ```
 
-use std::io;
+use std::{
+    convert::TryInto,
+    io::{Error, ErrorKind, Result},
+};
 
 mod parser;
 mod structs;
@@ -46,7 +49,9 @@ mod structs;
 pub use structs::*;
 
 impl EtherCatInfo {
-    pub fn from_xml_str(xml: &str) -> io::Result<Self> {
-        parser::from_xml_str(xml)
+    pub fn from_xml_str(xml: &str) -> Result<Self> {
+        let raw_info: parser::EtherCATInfo = serde_xml_rs::from_reader(xml.as_bytes())
+            .map_err(|e| Error::new(ErrorKind::Other, e.description()))?;
+        raw_info.try_into()
     }
 }

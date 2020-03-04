@@ -63,23 +63,78 @@ pub struct Modules {
 pub struct Group {
     SortOrder: Option<i32>,
     ParentGroup: Option<String>,
-    Type: String,
-    Name: String,
-    Comment: Option<String>,
-    Image16x14: Option<String>,
-    ImageFile16x14: Option<String>,
-    ImageData16x14: Option<String>,
+    #[serde(rename = "$value")]
+    items: Vec<GroupProperty>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub enum GroupProperty {
+    Type(String),
+    Name(Name),
+    Comment(String),
+    Image16x14(String),
+    ImageFile16x14(String),
+    ImageData16x14(String),
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Device {
     Physics: Option<String>,
-    Type: DeviceType,
-    Name: String,
-    RxPdo: Option<Vec<RxPdo>>,
-    TxPdo: Option<Vec<TxPdo>>,
-    Sm: Vec<Sm>,
+    #[serde(rename = "$value")]
+    items: Vec<DeviceProperty>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Name {
+    LcId: Option<String>,
+    #[serde(rename = "$value")]
+    value: String,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub enum DeviceProperty {
+    Type(DeviceType),
+    Name(Name),
+    RxPdo(Vec<RxPdo>),
+    TxPdo(Vec<TxPdo>),
+    Sm(Vec<Sm>),
+    Info {
+        // TODO
+    },
+    HideType {
+        // TODO
+    },
+    GroupType {
+        // TODO
+    },
+    URL {
+        // TODO
+    },
+    Profile {
+        // TODO
+    },
+    Eeprom {
+        // TODO
+    },
+    Fmmu {
+        // TODO
+    },
+    Image16x14(String),
+    ImageFile16x14(String),
+    ImageData16x14(String),
+    Mailbox {
+        // TODO
+    },
+    Dc {
+        // TODO
+    },
+    Slots {
+        // TODO
+    },
 }
 
 #[allow(non_snake_case)]
@@ -93,7 +148,7 @@ pub struct DeviceType {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Sm {
     Enable: Option<u8>,
     StartAddress: String,
@@ -102,7 +157,7 @@ pub struct Sm {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Entry {
     Index: String,
     SubIndex: Option<usize>,
@@ -115,11 +170,11 @@ pub type RxPdo = Pdo;
 pub type TxPdo = Pdo;
 
 #[allow(non_snake_case)]
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Pdo {
     Sm: usize,
     Fixed: u8,
-    Mandatory: u8,
+    Mandatory: Option<u8>,
     Index: String,
     Name: Option<String>,
     Entry: Vec<Entry>,
@@ -131,16 +186,11 @@ pub struct Module {
     // TODO
 }
 
-pub(crate) fn from_xml_str(xml: &str) -> Result<super::EtherCatInfo> {
-    let raw_info: EtherCATInfo = serde_xml_rs::from_reader(xml.as_bytes())
-        .map_err(|e| Error::new(ErrorKind::Other, e.description()))?;
-    raw_info.try_into()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_xml_rs::from_str;
+    use std::{fs::File, io::prelude::*};
 
     #[test]
     fn ethercat_info() {
@@ -183,6 +233,30 @@ mod tests {
                 }
             }
         );
+    }
+
+    #[test]
+    fn ethercat_info_crated_by_beckhoff() {
+        let mut file = File::open("tests/fixtures/Beckhoff_EK11xx.xml").unwrap();
+        let mut xml_string = String::new();
+        file.read_to_string(&mut xml_string).unwrap();
+        let _: EtherCATInfo = from_str(&xml_string).unwrap();
+    }
+
+    #[test]
+    fn ethercat_info_crated_by_weidmueller() {
+        let mut file = File::open("tests/fixtures/Weidmueller_UR20_FBC.xml").unwrap();
+        let mut xml_string = String::new();
+        file.read_to_string(&mut xml_string).unwrap();
+        let _: EtherCATInfo = from_str(&xml_string).unwrap();
+    }
+
+    #[test]
+    fn ethercat_info_crated_by_igh() {
+        let mut file = File::open("tests/fixtures/Weidmueller_UR20_FBC_from_IgH.xml").unwrap();
+        let mut xml_string = String::new();
+        file.read_to_string(&mut xml_string).unwrap();
+        let _: EtherCATInfo = from_str(&xml_string).unwrap();
     }
 
     #[test]
@@ -232,12 +306,14 @@ mod tests {
                     items: Some(vec![Group {
                         SortOrder: Some(0),
                         ParentGroup: None,
-                        Type: "Coupler".to_string(),
-                        Name: "Coupler".to_string(),
-                        Comment: None,
-                        Image16x14: None,
-                        ImageFile16x14: None,
-                        ImageData16x14: Some("44".to_string()),
+                        items: vec![
+                            GroupProperty::Type("Coupler".to_string()),
+                            GroupProperty::Name(Name {
+                                LcId: None,
+                                value: "Coupler".to_string(),
+                            }),
+                            GroupProperty::ImageData16x14("44".to_string()),
+                        ]
                     }]),
                 }),
                 Devices: Devices { items: None },
@@ -289,7 +365,7 @@ mod tests {
             RxPdo {
                 Sm: 2,
                 Fixed: 1,
-                Mandatory: 1,
+                Mandatory: Some(1),
                 Index: "#x16ff".to_string(),
                 Name: Some("".to_string()),
                 Entry: vec![Entry {
@@ -319,41 +395,44 @@ mod tests {
             device,
             Device {
                 Physics: None,
-                RxPdo: None,
-                TxPdo: None,
-                Sm: vec![
-                    Sm {
-                        Enable: Some(1),
-                        StartAddress: "#x1000".to_string(),
-                        ControlByte: "#x26".to_string(),
-                        DefaultSize: Some(512),
-                    },
-                    Sm {
-                        Enable: Some(1),
-                        StartAddress: "#x1400".to_string(),
-                        ControlByte: "#x22".to_string(),
-                        DefaultSize: Some(512),
-                    },
-                    Sm {
-                        Enable: None,
-                        StartAddress: "#x1800".to_string(),
-                        ControlByte: "#x64".to_string(),
-                        DefaultSize: None,
-                    },
-                    Sm {
-                        Enable: Some(0),
-                        StartAddress: "#x2400".to_string(),
-                        ControlByte: "#x20".to_string(),
-                        DefaultSize: Some(0),
-                    }
-                ],
-                Name: "Bar".to_string(),
-                Type: DeviceType {
-                    Description: "Foo".to_string(),
-                    ModulePdoGroup: None,
-                    ProductCode: "#x45".to_string(),
-                    RevisionNo: "#x001".to_string(),
-                }
+                items: vec![
+                    DeviceProperty::Type(DeviceType {
+                        Description: "Foo".to_string(),
+                        ModulePdoGroup: None,
+                        ProductCode: "#x45".to_string(),
+                        RevisionNo: "#x001".to_string(),
+                    }),
+                    DeviceProperty::Name(Name {
+                        LcId: None,
+                        value: "Bar".to_string()
+                    }),
+                    DeviceProperty::Sm(vec![
+                        Sm {
+                            Enable: Some(1),
+                            StartAddress: "#x1000".to_string(),
+                            ControlByte: "#x26".to_string(),
+                            DefaultSize: Some(512),
+                        },
+                        Sm {
+                            Enable: Some(1),
+                            StartAddress: "#x1400".to_string(),
+                            ControlByte: "#x22".to_string(),
+                            DefaultSize: Some(512),
+                        },
+                        Sm {
+                            Enable: None,
+                            StartAddress: "#x1800".to_string(),
+                            ControlByte: "#x64".to_string(),
+                            DefaultSize: None,
+                        },
+                        Sm {
+                            Enable: Some(0),
+                            StartAddress: "#x2400".to_string(),
+                            ControlByte: "#x20".to_string(),
+                            DefaultSize: Some(0),
+                        }
+                    ]),
+                ]
             }
         );
     }
