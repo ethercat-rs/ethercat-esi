@@ -20,7 +20,7 @@ pub struct Vendor {
 }
 
 /// Further slave descriptions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Description {
     pub groups: Vec<Group>,
     pub devices: Vec<Device>,
@@ -89,7 +89,7 @@ pub struct Sdo {
 #[derive(Debug, Clone)]
 pub struct Entry {
     pub index: u16,
-    pub sub_index: Option<usize>,
+    pub sub_index: Option<u32>,
     pub bit_len: usize,
     pub name: Option<String>,
     pub data_type: Option<String>,
@@ -97,6 +97,21 @@ pub struct Entry {
 
 #[derive(Debug, Clone)]
 pub struct Module {
+    pub r#type: String,
+    pub name: Option<String>,
+    pub tx_pdo: Option<Pdo>,
+    pub rx_pdo: Option<Pdo>,
+    pub mailbox: Mailbox,
+    pub profile: Profile,
+}
+
+#[derive(Debug, Clone)]
+pub struct Mailbox {
+    // TODO
+}
+
+#[derive(Debug, Clone)]
+pub struct Profile {
     // TODO
 }
 

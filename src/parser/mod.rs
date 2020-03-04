@@ -12,7 +12,8 @@ pub struct EtherCATInfo {
     Version: Option<String>,
     InfoReference: Option<String>,
     Vendor: Vendor,
-    Descriptions: Descriptions,
+    Descriptions: Option<Descriptions>,
+    Modules: Option<Modules>,
 }
 
 #[allow(non_snake_case)]
@@ -159,8 +160,8 @@ pub struct Sm {
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Entry {
-    Index: String,
-    SubIndex: Option<usize>,
+    Index: Index,
+    SubIndex: Option<String>,
     BitLen: usize,
     Name: Option<String>,
     DataType: Option<String>,
@@ -173,16 +174,41 @@ pub type TxPdo = Pdo;
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Pdo {
     Sm: usize,
-    Fixed: u8,
+    Fixed: Option<u8>,
     Mandatory: Option<u8>,
-    Index: String,
+    Index: Index,
     Name: Option<String>,
     Entry: Vec<Entry>,
 }
 
 #[allow(non_snake_case)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Index {
+    DependOnSlot: Option<usize>,
+    #[serde(rename = "$value")]
+    value: String,
+}
+
+#[allow(non_snake_case)]
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Module {
+    Type: String,
+    Name: Option<String>,
+    TxPdo: Option<Pdo>,
+    RxPdo: Option<Pdo>,
+    Mailbox: Mailbox,
+    Profile: Profile,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Profile {
+    // TODO
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Mailbox {
     // TODO
 }
 
@@ -226,11 +252,12 @@ mod tests {
                     ImageFile16x14: None,
                     ImageData16x14: Some("7D".to_string()),
                 },
-                Descriptions: Descriptions {
+                Descriptions: Some(Descriptions {
                     Groups: Some(Groups { items: None }),
                     Devices: Devices { items: None },
                     Modules: None,
-                }
+                }),
+                Modules: None,
             }
         );
     }
@@ -246,6 +273,14 @@ mod tests {
     #[test]
     fn ethercat_info_crated_by_weidmueller() {
         let mut file = File::open("tests/fixtures/Weidmueller_UR20_FBC.xml").unwrap();
+        let mut xml_string = String::new();
+        file.read_to_string(&mut xml_string).unwrap();
+        let _: EtherCATInfo = from_str(&xml_string).unwrap();
+    }
+
+    #[test]
+    fn ethercat_info_crated_by_weidmueller_module_information() {
+        let mut file = File::open("tests/fixtures/Weidmueller_UR20_IO.xml").unwrap();
         let mut xml_string = String::new();
         file.read_to_string(&mut xml_string).unwrap();
         let _: EtherCATInfo = from_str(&xml_string).unwrap();
@@ -336,8 +371,11 @@ mod tests {
         assert_eq!(
             entry,
             Entry {
-                Index: "#xf200".to_string(),
-                SubIndex: Some(2),
+                Index: Index {
+                    DependOnSlot: None,
+                    value: "#xf200".to_string(),
+                },
+                SubIndex: Some("2".into()),
                 BitLen: 1,
                 Name: Some("".to_string()),
                 DataType: Some("BOOL".to_string()),
@@ -364,13 +402,19 @@ mod tests {
             pdo,
             RxPdo {
                 Sm: 2,
-                Fixed: 1,
+                Fixed: Some(1),
                 Mandatory: Some(1),
-                Index: "#x16ff".to_string(),
+                Index: Index {
+                    DependOnSlot: None,
+                    value: "#x16ff".to_string(),
+                },
                 Name: Some("".to_string()),
                 Entry: vec![Entry {
-                    Index: "#xf200".to_string(),
-                    SubIndex: Some(3),
+                    Index: Index {
+                        DependOnSlot: None,
+                        value: "#xf200".to_string(),
+                    },
+                    SubIndex: Some("3".into()),
                     BitLen: 1,
                     Name: Some("".to_string()),
                     DataType: Some("BOOL".to_string()),

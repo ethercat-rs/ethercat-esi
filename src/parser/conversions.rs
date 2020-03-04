@@ -5,11 +5,30 @@ use std::{convert::TryFrom, num::ParseIntError, str::FromStr};
 impl TryFrom<EtherCATInfo> for S::EtherCatInfo {
     type Error = Error;
     fn try_from(x: EtherCATInfo) -> Result<Self> {
+        let mut description = match x.Descriptions {
+            Some(d) => d.try_into()?,
+            None => S::Description::default(),
+        };
+
+        if let Some(Modules {
+            items: Some(modules),
+        }) = x.Modules
+        {
+            modules
+                .into_iter()
+                .map(S::Module::try_from)
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .for_each(|m| {
+                    description.modules.push(m);
+                })
+        }
+
         Ok(S::EtherCatInfo {
             version: x.Version,
             info_reference: x.InfoReference,
             vendor: x.Vendor.try_into()?,
-            description: x.Descriptions.try_into()?,
+            description,
         })
     }
 }
@@ -274,13 +293,13 @@ impl TryFrom<Pdo> for S::Pdo {
     type Error = Error;
     fn try_from(pdo: Pdo) -> Result<Self> {
         Ok(S::Pdo {
-            fixed: pdo.Fixed == 1,
+            fixed: pdo.Fixed == Some(1),
             mandatory: pdo.Mandatory == Some(1),
             name: pdo
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),
             sm: pdo.Sm,
-            index: u16_from_hex_dec_value(&pdo.Index)?,
+            index: u16_from_hex_dec_value(&pdo.Index.value)?,
             entries: pdo
                 .Entry
                 .into_iter()
@@ -294,8 +313,11 @@ impl TryFrom<Entry> for S::Entry {
     type Error = Error;
     fn try_from(e: Entry) -> Result<Self> {
         Ok(S::Entry {
-            index: u16_from_hex_dec_value(&e.Index)?,
-            sub_index: e.SubIndex,
+            index: u16_from_hex_dec_value(&e.Index.value)?,
+            sub_index: match e.SubIndex {
+                Some(idx_string) => Some(u32_from_hex_dec_value(&idx_string)?),
+                None => None,
+            },
             bit_len: e.BitLen,
             name: e.Name,
             data_type: e.DataType,
@@ -305,8 +327,31 @@ impl TryFrom<Entry> for S::Entry {
 
 impl TryFrom<Module> for S::Module {
     type Error = Error;
-    fn try_from(_: Module) -> Result<Self> {
-        Ok(S::Module {})
+    fn try_from(m: Module) -> Result<Self> {
+        let rx_pdo = match m.RxPdo {
+            Some(pdo) => {
+                let pdo = S::Pdo::try_from(pdo)?;
+                Some(pdo)
+            }
+            None => None,
+        };
+
+        let tx_pdo = match m.TxPdo {
+            Some(pdo) => {
+                let pdo = S::Pdo::try_from(pdo)?;
+                Some(pdo)
+            }
+            None => None,
+        };
+
+        Ok(S::Module {
+            name: m.Name,
+            r#type: m.Type,
+            rx_pdo,
+            tx_pdo,
+            mailbox: S::Mailbox {},
+            profile: S::Profile {},
+        })
     }
 }
 

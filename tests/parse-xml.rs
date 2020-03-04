@@ -22,6 +22,18 @@ fn parse_xml_crated_by_weidmueller() {
 }
 
 #[test]
+fn parse_xml_crated_by_weidmueller_module_information() {
+    let mut file = File::open("tests/fixtures/Weidmueller_UR20_IO.xml").unwrap();
+    let mut xml_string = String::new();
+    file.read_to_string(&mut xml_string).unwrap();
+    let esi = EtherCatInfo::from_xml_str(&xml_string).unwrap();
+    assert_eq!(esi.vendor.id, 0x0000_0230);
+    assert_eq!(esi.description.modules.len(), 82);
+    let m = &esi.description.modules[0];
+    assert_eq!(m.tx_pdo.as_ref().unwrap().entries.len(), 6);
+}
+
+#[test]
 fn parse_xml_crated_by_beckhoff() {
     let mut file = File::open("tests/fixtures/Beckhoff_EK11xx.xml").unwrap();
     let mut xml_string = String::new();
