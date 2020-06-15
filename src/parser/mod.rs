@@ -154,7 +154,7 @@ pub struct Sm {
     Enable: Option<u8>,
     StartAddress: String,
     ControlByte: String,
-    DefaultSize: Option<usize>,
+    DefaultSize: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -430,7 +430,7 @@ mod tests {
           <Type ProductCode="#x45" RevisionNo="#x001">Foo</Type>
           <Name>Bar</Name>
           <Sm Enable="1" StartAddress="#x1000" ControlByte="#x26" DefaultSize="512" />
-          <Sm Enable="1" StartAddress="#x1400" ControlByte="#x22" DefaultSize="512" />
+          <Sm Enable="1" StartAddress="#x1400" ControlByte="#x22" DefaultSize="#x200" />
           <Sm            StartAddress="#x1800" ControlByte="#x64"                 />
           <Sm Enable="0" StartAddress="#x2400" ControlByte="#x20" DefaultSize="0" />
         </Device>"##;
@@ -455,13 +455,13 @@ mod tests {
                             Enable: Some(1),
                             StartAddress: "#x1000".to_string(),
                             ControlByte: "#x26".to_string(),
-                            DefaultSize: Some(512),
+                            DefaultSize: Some("512".to_string()),
                         },
                         Sm {
                             Enable: Some(1),
                             StartAddress: "#x1400".to_string(),
                             ControlByte: "#x22".to_string(),
-                            DefaultSize: Some(512),
+                            DefaultSize: Some("#x200".to_string()),
                         },
                         Sm {
                             Enable: None,
@@ -473,7 +473,7 @@ mod tests {
                             Enable: Some(0),
                             StartAddress: "#x2400".to_string(),
                             ControlByte: "#x20".to_string(),
-                            DefaultSize: Some(0),
+                            DefaultSize: Some("0".to_string()),
                         }
                     ]),
                 ]

@@ -283,7 +283,12 @@ impl TryFrom<Sm> for S::Sm {
         Ok(S::Sm {
             start_address: u16_from_hex_dec_value(&sm.StartAddress)?,
             control_byte: u8_from_hex_dec_value(&sm.ControlByte)?,
-            default_size: sm.DefaultSize,
+            default_size: if let Some(x) = sm.DefaultSize {
+                let n = u32_from_hex_dec_value(&x)?;
+                Some(n as usize)
+            } else {
+                None
+            },
             enable: sm.Enable == Some(1),
         })
     }
