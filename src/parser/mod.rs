@@ -174,8 +174,8 @@ pub type TxPdo = Pdo;
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Pdo {
     Sm: usize,
-    Fixed: Option<u8>,
-    Mandatory: Option<u8>,
+    Fixed: Option<String>,
+    Mandatory: Option<String>,
     Index: Index,
     Name: Option<String>,
     Entry: Vec<Entry>,
@@ -386,7 +386,7 @@ mod tests {
     #[test]
     fn rx_pdo() {
         let s = r##"
-        <RxPdo Sm="2" Fixed="1" Mandatory="1">
+        <RxPdo Sm="2" Fixed="1" Mandatory="true">
           <Index>#x16ff</Index>
           <Name></Name>
           <Entry>
@@ -402,8 +402,8 @@ mod tests {
             pdo,
             RxPdo {
                 Sm: 2,
-                Fixed: Some(1),
-                Mandatory: Some(1),
+                Fixed: Some("1".to_string()),
+                Mandatory: Some("true".to_string()),
                 Index: Index {
                     DependOnSlot: None,
                     value: "#x16ff".to_string(),

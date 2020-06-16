@@ -298,8 +298,16 @@ impl TryFrom<Pdo> for S::Pdo {
     type Error = Error;
     fn try_from(pdo: Pdo) -> Result<Self> {
         Ok(S::Pdo {
-            fixed: pdo.Fixed == Some(1),
-            mandatory: pdo.Mandatory == Some(1),
+            fixed: if let Some(s) = &pdo.Fixed {
+                bool_from_str(s)?
+            } else {
+                false
+            },
+            mandatory: if let Some(s) = &pdo.Mandatory {
+                bool_from_str(s)?
+            } else {
+                false
+            },
             name: pdo
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),
@@ -357,6 +365,17 @@ impl TryFrom<Module> for S::Module {
             mailbox: S::Mailbox {},
             profile: S::Profile {},
         })
+    }
+}
+
+fn bool_from_str(v: &str) -> Result<bool> {
+    match &*v.to_lowercase() {
+        "1" | "true" => Ok(true),
+        "0" | "false" => Ok(false),
+        _ => Err(Error::new(
+            ErrorKind::Other,
+            "unknown boolean value representation",
+        )),
     }
 }
 
@@ -430,5 +449,16 @@ mod tests {
         assert_eq!(u8_from_hex_dec_value("#x005").unwrap(), 0x5);
         assert_eq!(u8_from_hex_dec_value("xF7").unwrap(), 0xf7);
         assert_eq!(u8_from_hex_dec_value("XF7").unwrap(), 0xf7);
+    }
+
+    #[test]
+    fn parse_bool_from_str() {
+        assert_eq!(bool_from_str("1").unwrap(), true);
+        assert_eq!(bool_from_str("true").unwrap(), true);
+        assert_eq!(bool_from_str("True").unwrap(), true);
+        assert_eq!(bool_from_str("0").unwrap(), false);
+        assert_eq!(bool_from_str("false").unwrap(), false);
+        assert_eq!(bool_from_str("False").unwrap(), false);
+        assert!(bool_from_str("foo").is_err());
     }
 }
