@@ -145,7 +145,7 @@ impl TryFrom<Group> for S::Group {
                 }
             })
             .cloned()
-            .nth(0);
+            .next();
 
         let props = g.items.iter();
         let name = props
@@ -158,7 +158,7 @@ impl TryFrom<Group> for S::Group {
                 }
             })
             .cloned()
-            .nth(0)
+            .next()
             .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory group name not found"))?;
 
         let r#type = props
@@ -170,7 +170,7 @@ impl TryFrom<Group> for S::Group {
                 }
             })
             .cloned()
-            .nth(0)
+            .next()
             .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory group type not found"))?;
 
         Ok(S::Group {
@@ -198,7 +198,7 @@ impl TryFrom<Device> for S::Device {
                 }
             })
             .cloned()
-            .nth(0)
+            .next()
             .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory device name not found"))?;
         let d_type = props
             .clone()
@@ -209,7 +209,7 @@ impl TryFrom<Device> for S::Device {
                     None
                 }
             })
-            .nth(0)
+            .next()
             .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory device type not found"))?;
 
         let product_code = u32_from_hex_dec_value(&d_type.ProductCode)?;
@@ -226,7 +226,7 @@ impl TryFrom<Device> for S::Device {
                 }
             })
             .cloned()
-            .nth(0)
+            .next()
             .unwrap_or_else(|| vec![])
             .into_iter()
             .map(S::Sm::try_from)
@@ -242,7 +242,7 @@ impl TryFrom<Device> for S::Device {
                 }
             })
             .cloned()
-            .nth(0)
+            .next()
             .unwrap_or_else(|| vec![])
             .into_iter()
             .map(S::Pdo::try_from)
@@ -258,7 +258,7 @@ impl TryFrom<Device> for S::Device {
                 }
             })
             .cloned()
-            .nth(0)
+            .next()
             .unwrap_or_else(|| vec![])
             .into_iter()
             .map(S::Pdo::try_from)
