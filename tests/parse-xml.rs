@@ -1,4 +1,5 @@
 use ethercat_esi::EtherCatInfo;
+use ethercat_types as ec;
 use std::{fs::File, io::prelude::*};
 
 #[test]
@@ -17,8 +18,8 @@ fn parse_xml_crated_by_weidmueller() {
     assert_eq!(dev_1.revision_no, 0x00011100);
     assert_eq!(dev_0.sm[0].start_address, 0x1000);
     assert_eq!(dev_0.sm[0].control_byte, 0x26);
-    assert_eq!(dev_0.rx_pdo[0].index, 0x16FF);
-    assert_eq!(dev_0.rx_pdo[0].entries[0].index, 0xF200);
+    assert_eq!(dev_0.rx_pdo[0].index, ec::Idx::from(0x16FF));
+    assert_eq!(dev_0.rx_pdo[0].entries[0].index, ec::Idx::from(0xF200));
 }
 
 #[test]

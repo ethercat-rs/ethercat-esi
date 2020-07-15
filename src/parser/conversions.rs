@@ -1,5 +1,6 @@
 use super::*;
 use crate::structs as S;
+use ethercat_types as ec;
 use std::{convert::TryFrom, num::ParseIntError, str::FromStr};
 
 impl TryFrom<EtherCATInfo> for S::EtherCatInfo {
@@ -108,7 +109,7 @@ impl TryFrom<Descriptions> for S::Description {
         let devices: Vec<_> = d
             .Devices
             .items
-            .unwrap_or_else(|| vec![])
+            .unwrap_or_else(Vec::new)
             .into_iter()
             .map(S::Device::try_from)
             .collect::<Result<_>>()?;
@@ -227,7 +228,7 @@ impl TryFrom<Device> for S::Device {
             })
             .cloned()
             .next()
-            .unwrap_or_else(|| vec![])
+            .unwrap_or_else(Vec::new)
             .into_iter()
             .map(S::Sm::try_from)
             .collect::<Result<_>>()?;
@@ -243,7 +244,7 @@ impl TryFrom<Device> for S::Device {
             })
             .cloned()
             .next()
-            .unwrap_or_else(|| vec![])
+            .unwrap_or_else(Vec::new)
             .into_iter()
             .map(S::Pdo::try_from)
             .collect::<Result<_>>()?;
@@ -259,7 +260,7 @@ impl TryFrom<Device> for S::Device {
             })
             .cloned()
             .next()
-            .unwrap_or_else(|| vec![])
+            .unwrap_or_else(Vec::new)
             .into_iter()
             .map(S::Pdo::try_from)
             .collect::<Result<_>>()?;
@@ -311,8 +312,8 @@ impl TryFrom<Pdo> for S::Pdo {
             name: pdo
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),
-            sm: pdo.Sm,
-            index: u16_from_hex_dec_value(&pdo.Index.value)?,
+            sm: ec::SmIdx::from(pdo.Sm),
+            index: ec::Idx::from(u16_from_hex_dec_value(&pdo.Index.value)?),
             entries: pdo
                 .Entry
                 .into_iter()
@@ -326,9 +327,9 @@ impl TryFrom<Entry> for S::Entry {
     type Error = Error;
     fn try_from(e: Entry) -> Result<Self> {
         Ok(S::Entry {
-            index: u16_from_hex_dec_value(&e.Index.value)?,
+            index: ec::Idx::from(u16_from_hex_dec_value(&e.Index.value)?),
             sub_index: match e.SubIndex {
-                Some(idx_string) => Some(u32_from_hex_dec_value(&idx_string)?),
+                Some(idx_string) => Some(ec::SubIdx::from(u8_from_hex_dec_value(&idx_string)?)),
                 None => None,
             },
             bit_len: e.BitLen,

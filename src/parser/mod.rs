@@ -173,7 +173,7 @@ pub type TxPdo = Pdo;
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Pdo {
-    Sm: usize,
+    Sm: u8,
     Fixed: Option<String>,
     Mandatory: Option<String>,
     Index: Index,

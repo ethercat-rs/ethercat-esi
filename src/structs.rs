@@ -1,3 +1,5 @@
+pub use ethercat_types::{Idx, SmIdx, SubIdx};
+
 /// EtherCAT Slave Information (ESI).
 #[derive(Debug, Clone)]
 pub struct EtherCatInfo {
@@ -71,10 +73,10 @@ pub struct Sm {
 /// Process Data Object (PDO).
 #[derive(Debug, Clone)]
 pub struct Pdo {
-    pub sm: usize,
+    pub sm: SmIdx,
     pub fixed: bool,
     pub mandatory: bool,
-    pub index: u16,
+    pub index: Idx,
     pub name: Option<String>,
     pub entries: Vec<Entry>,
 }
@@ -88,8 +90,8 @@ pub struct Sdo {
 /// Entry of an Object Dictionary.
 #[derive(Debug, Clone)]
 pub struct Entry {
-    pub index: u16,
-    pub sub_index: Option<u32>,
+    pub index: Idx,
+    pub sub_index: Option<SubIdx>,
     pub bit_len: usize,
     pub name: Option<String>,
     pub data_type: Option<String>,
