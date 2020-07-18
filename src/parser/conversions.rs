@@ -328,7 +328,7 @@ impl TryFrom<Entry> for S::Entry {
     fn try_from(e: Entry) -> Result<Self> {
         Ok(S::Entry {
             index: ec::Idx::from(u16_from_hex_dec_value(&e.Index.value)?),
-            sub_index: match e.SubIndex {
+            sub_idx: match e.SubIndex {
                 Some(idx_string) => Some(ec::SubIdx::from(u8_from_hex_dec_value(&idx_string)?)),
                 None => None,
             },

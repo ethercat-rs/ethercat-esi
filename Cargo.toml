@@ -11,7 +11,7 @@ repository = "https://github.com/ethercat-rs/ethercat-esi"
 edition = "2018"
 
 [dependencies]
-ethercat-types = "0.1"
+ethercat-types = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde-xml-rs = "0.4"
 

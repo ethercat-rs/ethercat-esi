@@ -91,7 +91,7 @@ pub struct Sdo {
 #[derive(Debug, Clone)]
 pub struct Entry {
     pub index: Idx,
-    pub sub_index: Option<SubIdx>,
+    pub sub_idx: Option<SubIdx>,
     pub bit_len: usize,
     pub name: Option<String>,
     pub data_type: Option<String>,
