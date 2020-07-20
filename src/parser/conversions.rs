@@ -313,24 +313,26 @@ impl TryFrom<Pdo> for S::Pdo {
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),
             sm: ec::SmIdx::from(pdo.Sm),
-            idx: ec::Idx::from(u16_from_hex_dec_value(&pdo.Index.value)?),
+            idx: ec::PdoIdx::from(u16_from_hex_dec_value(&pdo.Index.value)?),
             entries: pdo
                 .Entry
                 .into_iter()
-                .map(S::Entry::try_from)
+                .map(S::PdoEntry::try_from)
                 .collect::<Result<_>>()?,
         })
     }
 }
 
-impl TryFrom<Entry> for S::Entry {
+impl TryFrom<Entry> for S::PdoEntry {
     type Error = Error;
     fn try_from(e: Entry) -> Result<Self> {
-        Ok(S::Entry {
-            idx: ec::Idx::from(u16_from_hex_dec_value(&e.Index.value)?),
-            sub_idx: match e.SubIndex {
-                Some(idx_string) => Some(ec::SubIdx::from(u8_from_hex_dec_value(&idx_string)?)),
-                None => None,
+        Ok(S::PdoEntry {
+            entry_idx: S::PdoEntryIdx {
+                idx: ec::Idx::from(u16_from_hex_dec_value(&e.Index.value)?),
+                sub_idx: match e.SubIndex {
+                    Some(idx_string) => ec::SubIdx::from(u8_from_hex_dec_value(&idx_string)?),
+                    None => ec::SubIdx::from(0),
+                },
             },
             bit_len: e.BitLen,
             name: e.Name,

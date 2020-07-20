@@ -1,4 +1,4 @@
-pub use ethercat_types::{Idx, SmIdx, SubIdx};
+pub use ethercat_types::{PdoEntryIdx, PdoIdx, SmIdx, SubIdx};
 
 /// EtherCAT Slave Information (ESI).
 #[derive(Debug, Clone)]
@@ -76,9 +76,9 @@ pub struct Pdo {
     pub sm: SmIdx,
     pub fixed: bool,
     pub mandatory: bool,
-    pub idx: Idx,
+    pub idx: PdoIdx,
     pub name: Option<String>,
-    pub entries: Vec<Entry>,
+    pub entries: Vec<PdoEntry>,
 }
 
 /// Service Data Object (SDO).
@@ -87,11 +87,10 @@ pub struct Sdo {
     // TODO
 }
 
-/// Entry of an Object Dictionary.
+/// PDO Entry.
 #[derive(Debug, Clone)]
-pub struct Entry {
-    pub idx: Idx,
-    pub sub_idx: Option<SubIdx>,
+pub struct PdoEntry {
+    pub entry_idx: PdoEntryIdx,
     pub bit_len: usize,
     pub name: Option<String>,
     pub data_type: Option<String>,
