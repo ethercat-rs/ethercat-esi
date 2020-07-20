@@ -313,7 +313,7 @@ impl TryFrom<Pdo> for S::Pdo {
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),
             sm: ec::SmIdx::from(pdo.Sm),
-            index: ec::Idx::from(u16_from_hex_dec_value(&pdo.Index.value)?),
+            idx: ec::Idx::from(u16_from_hex_dec_value(&pdo.Index.value)?),
             entries: pdo
                 .Entry
                 .into_iter()
@@ -327,7 +327,7 @@ impl TryFrom<Entry> for S::Entry {
     type Error = Error;
     fn try_from(e: Entry) -> Result<Self> {
         Ok(S::Entry {
-            index: ec::Idx::from(u16_from_hex_dec_value(&e.Index.value)?),
+            idx: ec::Idx::from(u16_from_hex_dec_value(&e.Index.value)?),
             sub_idx: match e.SubIndex {
                 Some(idx_string) => Some(ec::SubIdx::from(u8_from_hex_dec_value(&idx_string)?)),
                 None => None,

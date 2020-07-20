@@ -76,7 +76,7 @@ pub struct Pdo {
     pub sm: SmIdx,
     pub fixed: bool,
     pub mandatory: bool,
-    pub index: Idx,
+    pub idx: Idx,
     pub name: Option<String>,
     pub entries: Vec<Entry>,
 }
@@ -90,7 +90,7 @@ pub struct Sdo {
 /// Entry of an Object Dictionary.
 #[derive(Debug, Clone)]
 pub struct Entry {
-    pub index: Idx,
+    pub idx: Idx,
     pub sub_idx: Option<SubIdx>,
     pub bit_len: usize,
     pub name: Option<String>,
