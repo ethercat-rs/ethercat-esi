@@ -14,12 +14,15 @@ pub struct EtherCatInfo {
 pub struct Vendor {
     pub file_version: Option<u32>,
     pub id: u32,
-    pub name: Option<String>,
+    pub name: Names,
     pub comment: Option<String>,
     pub url: Option<String>,
     pub desc_url: Option<String>,
     pub image: Option<Image>,
 }
+
+/// A collection of human readable names, with attached language IDs.
+pub type Names = Vec<(String, Option<u16>)>;
 
 /// Further slave descriptions.
 #[derive(Debug, Clone, Default)]
@@ -43,7 +46,7 @@ pub struct Group {
     pub sort_order: Option<i32>,
     pub parent_group: Option<String>,
     pub r#type: String,
-    pub name: String,
+    pub name: Names,
     pub comment: Option<String>,
     pub image: Option<Image>,
     // TODO: Optional 'VendorSpecific'
@@ -52,7 +55,7 @@ pub struct Group {
 #[derive(Debug, Clone)]
 pub struct Device {
     pub physics: Option<String>,
-    pub name: String,
+    pub name: Names,
     pub desc: String,
     pub product_code: Option<u32>,
     pub revision_no: Option<u32>,
@@ -78,7 +81,7 @@ pub struct Pdo {
     pub fixed: bool,
     pub mandatory: bool,
     pub idx: PdoIdx,
-    pub name: Option<String>,
+    pub name: Names,
     pub entries: Vec<PdoEntry>,
 }
 
@@ -93,14 +96,14 @@ pub struct Sdo {
 pub struct PdoEntry {
     pub entry_idx: PdoEntryIdx,
     pub bit_len: usize,
-    pub name: Option<String>,
+    pub name: Names,
     pub data_type: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Module {
     pub r#type: String,
-    pub name: Option<String>,
+    pub name: Names,
     pub tx_pdo: Vec<Pdo>,
     pub rx_pdo: Vec<Pdo>,
     pub mailbox: Option<Mailbox>,

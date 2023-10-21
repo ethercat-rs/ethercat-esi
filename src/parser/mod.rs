@@ -21,7 +21,7 @@ pub struct EtherCATInfo {
 struct Vendor {
     FileVersion: Option<u32>,
     Id: String,
-    Name: Option<String>,
+    Name: Option<Vec<Name>>,
     Comment: Option<String>,
     URL: Option<String>,
     DescriptionURL: Option<String>,
@@ -72,7 +72,7 @@ pub struct Group {
 #[derive(Debug, Deserialize, PartialEq)]
 pub enum GroupProperty {
     Type(String),
-    Name(Name),
+    Name(Vec<Name>),
     Comment(String),
     Image16x14(String),
     ImageFile16x14(String),
@@ -88,18 +88,18 @@ pub struct Device {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Name {
     LcId: Option<String>,
     #[serde(rename = "$value")]
-    value: String,
+    value: Option<String>,
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, PartialEq)]
 pub enum DeviceProperty {
     Type(DeviceType),
-    Name(Name),
+    Name(Vec<Name>),
     RxPdo(Vec<RxPdo>),
     TxPdo(Vec<TxPdo>),
     Sm(Vec<Sm>),
@@ -179,7 +179,7 @@ pub struct Entry {
     Index: Index,
     SubIndex: Option<String>,
     BitLen: usize,
-    Name: Option<String>,
+    Name: Option<Vec<Name>>,
     DataType: Option<String>,
 }
 
@@ -193,7 +193,7 @@ pub struct Pdo {
     Fixed: Option<String>,
     Mandatory: Option<String>,
     Index: Index,
-    Name: Option<String>,
+    Name: Vec<Name>,
     Entry: Option<Vec<Entry>>,
 }
 
@@ -209,7 +209,7 @@ pub struct Index {
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Module {
     Type: String,
-    Name: Option<String>,
+    Name: Vec<Name>,
     TxPdo: Option<Vec<TxPdo>>,
     RxPdo: Option<Vec<RxPdo>>,
     Mailbox: Option<Mailbox>,
@@ -260,7 +260,10 @@ mod tests {
                 Vendor: Vendor {
                     FileVersion: Some(99),
                     Id: "#x00000000".to_string(),
-                    Name: Some("Vendor Foo".to_string()),
+                    Name: Some(vec![Name {
+                        LcId: None,
+                        value: Some("Vendor Foo".to_string()),
+                    }]),
                     Comment: None,
                     URL: None,
                     DescriptionURL: None,
@@ -313,11 +316,12 @@ mod tests {
     #[test]
     fn vendor() {
         let s = r##"
- 		<Vendor FileVersion="0045">
- 			<Id>#x00000999</Id>
- 			<Name>Vendor Name</Name>
- 			<ImageData16x14>7D7D7D7</ImageData16x14>
- 		</Vendor>"##;
+                <Vendor FileVersion="0045">
+                        <Id>#x00000999</Id>
+                        <Name LcId="1033">Vendor Name</Name>
+                        <Name LcId="1049">Vendör Näme</Name>
+                        <ImageData16x14>7D7D7D7</ImageData16x14>
+                </Vendor>"##;
         let vendor: Vendor = from_str(s).unwrap();
 
         assert_eq!(
@@ -325,7 +329,16 @@ mod tests {
             Vendor {
                 FileVersion: Some(45),
                 Id: "#x00000999".to_string(),
-                Name: Some("Vendor Name".to_string()),
+                Name: Some(vec![
+                    Name {
+                        LcId: Some("1033".to_string()),
+                        value: Some("Vendor Name".to_string()),
+                    },
+                    Name {
+                        LcId: Some("1049".to_string()),
+                        value: Some("Vendör Näme".to_string()),
+                    }
+                ]),
                 Comment: None,
                 URL: None,
                 DescriptionURL: None,
@@ -339,16 +352,16 @@ mod tests {
     #[test]
     fn descriptions() {
         let s = r##"
-			<Descriptions>
-				<Groups>
-					<Group SortOrder="0">
-						<Type>Coupler</Type>
-						<Name>Coupler</Name>
-						<ImageData16x14>44</ImageData16x14>
-					</Group>
-				</Groups>
-				<Devices></Devices>
-			</Descriptions>"##;
+                        <Descriptions>
+                                <Groups>
+                                        <Group SortOrder="0">
+                                                <Type>Coupler</Type>
+                                                <Name>Coupler</Name>
+                                                <ImageData16x14>44</ImageData16x14>
+                                        </Group>
+                                </Groups>
+                                <Devices></Devices>
+                        </Descriptions>"##;
         let descriptions: Descriptions = from_str(s).unwrap();
         assert_eq!(
             descriptions,
@@ -359,10 +372,10 @@ mod tests {
                         ParentGroup: None,
                         items: vec![
                             GroupProperty::Type("Coupler".to_string()),
-                            GroupProperty::Name(Name {
+                            GroupProperty::Name(vec![Name {
                                 LcId: None,
-                                value: "Coupler".to_string(),
-                            }),
+                                value: Some("Coupler".to_string()),
+                            }]),
                             GroupProperty::ImageData16x14("44".to_string()),
                         ]
                     }]),
@@ -393,7 +406,10 @@ mod tests {
                 },
                 SubIndex: Some("2".into()),
                 BitLen: 1,
-                Name: Some("".to_string()),
+                Name: Some(vec![Name {
+                    LcId: None,
+                    value: None
+                }]),
                 DataType: Some("BOOL".to_string()),
             }
         );
@@ -424,7 +440,10 @@ mod tests {
                     DependOnSlot: None,
                     value: "#x16ff".to_string(),
                 },
-                Name: Some("".to_string()),
+                Name: vec![Name {
+                    LcId: None,
+                    value: None
+                }],
                 Entry: Some(vec![Entry {
                     Index: Index {
                         DependOnSlot: None,
@@ -432,7 +451,10 @@ mod tests {
                     },
                     SubIndex: Some("3".into()),
                     BitLen: 1,
-                    Name: Some("".to_string()),
+                    Name: Some(vec![Name {
+                        LcId: None,
+                        value: None
+                    }]),
                     DataType: Some("BOOL".to_string()),
                 }])
             }
@@ -462,10 +484,10 @@ mod tests {
                         ProductCode: Some("#x45".to_string()),
                         RevisionNo: Some("#x001".to_string()),
                     }),
-                    DeviceProperty::Name(Name {
+                    DeviceProperty::Name(vec![Name {
                         LcId: None,
-                        value: "Bar".to_string()
-                    }),
+                        value: Some("Bar".to_string()),
+                    }]),
                     DeviceProperty::Sm(vec![
                         Sm {
                             Enable: Some(1),
