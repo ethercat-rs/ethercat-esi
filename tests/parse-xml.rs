@@ -12,12 +12,12 @@ fn parse_xml_crated_by_weidmueller() {
     assert_eq!(esi.description.devices.len(), 2);
     let dev_0 = &esi.description.devices[0];
     let dev_1 = &esi.description.devices[1];
-    assert_eq!(dev_0.product_code, 0x4F911C30);
-    assert_eq!(dev_1.product_code, 0x4F911C30);
-    assert_eq!(dev_0.revision_no, 0x1);
-    assert_eq!(dev_1.revision_no, 0x00011100);
+    assert_eq!(dev_0.product_code, Some(0x4F911C30));
+    assert_eq!(dev_1.product_code, Some(0x4F911C30));
+    assert_eq!(dev_0.revision_no, Some(0x1));
+    assert_eq!(dev_1.revision_no, Some(0x00011100));
     assert_eq!(dev_0.sm[0].start_address, 0x1000);
-    assert_eq!(dev_0.sm[0].control_byte, 0x26);
+    assert_eq!(dev_0.sm[0].control_byte, Some(0x26));
     assert_eq!(dev_0.rx_pdo[0].idx, ec::PdoIdx::from(0x16FF));
     assert_eq!(
         dev_0.rx_pdo[0].entries[0].entry_idx.idx,
@@ -38,7 +38,7 @@ fn parse_xml_crated_by_weidmueller_module_information() {
     assert_eq!(esi.vendor.id, 0x0000_0230);
     assert_eq!(esi.description.modules.len(), 82);
     let m = &esi.description.modules[0];
-    assert_eq!(m.tx_pdo.as_ref().unwrap().entries.len(), 6);
+    assert_eq!(m.tx_pdo[0].entries.len(), 6);
 }
 
 #[test]

@@ -54,8 +54,8 @@ pub struct Device {
     pub physics: Option<String>,
     pub name: String,
     pub desc: String,
-    pub product_code: u32,
-    pub revision_no: u32,
+    pub product_code: Option<u32>,
+    pub revision_no: Option<u32>,
     pub sm: Vec<Sm>,
     pub rx_pdo: Vec<Pdo>,
     pub tx_pdo: Vec<Pdo>,
@@ -66,14 +66,15 @@ pub struct Device {
 pub struct Sm {
     pub enable: bool,
     pub start_address: u16,
-    pub control_byte: u8,
+    pub control_byte: Option<u8>,
     pub default_size: Option<usize>,
+    pub r#virtual: bool,
 }
 
 /// Process Data Object (PDO).
 #[derive(Debug, Clone)]
 pub struct Pdo {
-    pub sm: SmIdx,
+    pub sm: Option<SmIdx>,
     pub fixed: bool,
     pub mandatory: bool,
     pub idx: PdoIdx,
@@ -100,10 +101,10 @@ pub struct PdoEntry {
 pub struct Module {
     pub r#type: String,
     pub name: Option<String>,
-    pub tx_pdo: Option<Pdo>,
-    pub rx_pdo: Option<Pdo>,
-    pub mailbox: Mailbox,
-    pub profile: Profile,
+    pub tx_pdo: Vec<Pdo>,
+    pub rx_pdo: Vec<Pdo>,
+    pub mailbox: Option<Mailbox>,
+    pub profile: Option<Profile>,
 }
 
 #[derive(Debug, Clone)]
