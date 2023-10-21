@@ -213,8 +213,16 @@ impl TryFrom<Device> for S::Device {
             .next()
             .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory device type not found"))?;
 
-        let product_code = u32_from_hex_dec_value(&d_type.ProductCode)?;
-        let revision_no = u32_from_hex_dec_value(&d_type.RevisionNo)?;
+        let product_code = d_type
+            .ProductCode
+            .as_deref()
+            .map(u32_from_hex_dec_value)
+            .transpose()?;
+        let revision_no = d_type
+            .RevisionNo
+            .as_deref()
+            .map(u32_from_hex_dec_value)
+            .transpose()?;
         let desc = d_type.Description.to_owned();
 
         let sm = props
@@ -283,7 +291,11 @@ impl TryFrom<Sm> for S::Sm {
     fn try_from(sm: Sm) -> Result<Self> {
         Ok(S::Sm {
             start_address: u16_from_hex_dec_value(&sm.StartAddress)?,
-            control_byte: u8_from_hex_dec_value(&sm.ControlByte)?,
+            control_byte: sm
+                .ControlByte
+                .as_deref()
+                .map(u8_from_hex_dec_value)
+                .transpose()?,
             default_size: if let Some(x) = sm.DefaultSize {
                 let n = u32_from_hex_dec_value(&x)?;
                 Some(n as usize)
@@ -291,6 +303,7 @@ impl TryFrom<Sm> for S::Sm {
                 None
             },
             enable: sm.Enable == Some(1),
+            r#virtual: sm.Virtual.as_deref().map(bool_from_str).transpose()? == Some(true),
         })
     }
 }
@@ -312,10 +325,11 @@ impl TryFrom<Pdo> for S::Pdo {
             name: pdo
                 .Name
                 .and_then(|n| if n.is_empty() { None } else { Some(n) }),
-            sm: ec::SmIdx::from(pdo.Sm),
+            sm: pdo.Sm.map(ec::SmIdx::from),
             idx: ec::PdoIdx::from(u16_from_hex_dec_value(&pdo.Index.value)?),
             entries: pdo
                 .Entry
+                .unwrap_or_default()
                 .into_iter()
                 .map(S::PdoEntry::try_from)
                 .collect::<Result<_>>()?,
@@ -344,29 +358,27 @@ impl TryFrom<Entry> for S::PdoEntry {
 impl TryFrom<Module> for S::Module {
     type Error = Error;
     fn try_from(m: Module) -> Result<Self> {
-        let rx_pdo = match m.RxPdo {
-            Some(pdo) => {
-                let pdo = S::Pdo::try_from(pdo)?;
-                Some(pdo)
-            }
-            None => None,
-        };
+        let rx_pdo = m
+            .RxPdo
+            .unwrap_or_default()
+            .into_iter()
+            .map(S::Pdo::try_from)
+            .collect::<Result<_>>()?;
 
-        let tx_pdo = match m.TxPdo {
-            Some(pdo) => {
-                let pdo = S::Pdo::try_from(pdo)?;
-                Some(pdo)
-            }
-            None => None,
-        };
+        let tx_pdo = m
+            .TxPdo
+            .unwrap_or_default()
+            .into_iter()
+            .map(S::Pdo::try_from)
+            .collect::<Result<_>>()?;
 
         Ok(S::Module {
             name: m.Name,
             r#type: m.Type,
             rx_pdo,
             tx_pdo,
-            mailbox: S::Mailbox {},
-            profile: S::Profile {},
+            mailbox: None,
+            profile: None,
         })
     }
 }

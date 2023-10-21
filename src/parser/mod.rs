@@ -136,14 +136,29 @@ pub enum DeviceProperty {
     Slots {
         // TODO
     },
+    Su {
+        // TODO
+    },
+    AlternativeType {
+        // TODO
+    },
+    VendorSpecific {
+        // TODO
+    },
+    SubDevice {
+        // TODO
+    },
+    ESC {
+        // TODO
+    },
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct DeviceType {
     ModulePdoGroup: Option<String>,
-    ProductCode: String,
-    RevisionNo: String,
+    ProductCode: Option<String>,
+    RevisionNo: Option<String>,
     #[serde(rename = "$value")]
     Description: String,
 }
@@ -153,8 +168,9 @@ pub struct DeviceType {
 pub struct Sm {
     Enable: Option<u8>,
     StartAddress: String,
-    ControlByte: String,
+    ControlByte: Option<String>,
     DefaultSize: Option<String>,
+    Virtual: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -173,12 +189,12 @@ pub type TxPdo = Pdo;
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Pdo {
-    Sm: u8,
+    Sm: Option<u8>,
     Fixed: Option<String>,
     Mandatory: Option<String>,
     Index: Index,
     Name: Option<String>,
-    Entry: Vec<Entry>,
+    Entry: Option<Vec<Entry>>,
 }
 
 #[allow(non_snake_case)]
@@ -194,10 +210,10 @@ pub struct Index {
 pub struct Module {
     Type: String,
     Name: Option<String>,
-    TxPdo: Option<Pdo>,
-    RxPdo: Option<Pdo>,
-    Mailbox: Mailbox,
-    Profile: Profile,
+    TxPdo: Option<Vec<TxPdo>>,
+    RxPdo: Option<Vec<RxPdo>>,
+    Mailbox: Option<Mailbox>,
+    Profile: Option<Profile>,
 }
 
 #[allow(non_snake_case)]
@@ -401,7 +417,7 @@ mod tests {
         assert_eq!(
             pdo,
             RxPdo {
-                Sm: 2,
+                Sm: Some(2),
                 Fixed: Some("1".to_string()),
                 Mandatory: Some("true".to_string()),
                 Index: Index {
@@ -409,7 +425,7 @@ mod tests {
                     value: "#x16ff".to_string(),
                 },
                 Name: Some("".to_string()),
-                Entry: vec![Entry {
+                Entry: Some(vec![Entry {
                     Index: Index {
                         DependOnSlot: None,
                         value: "#xf200".to_string(),
@@ -418,7 +434,7 @@ mod tests {
                     BitLen: 1,
                     Name: Some("".to_string()),
                     DataType: Some("BOOL".to_string()),
-                }]
+                }])
             }
         );
     }
@@ -429,10 +445,10 @@ mod tests {
         <Device>
           <Type ProductCode="#x45" RevisionNo="#x001">Foo</Type>
           <Name>Bar</Name>
-          <Sm Enable="1" StartAddress="#x1000" ControlByte="#x26" DefaultSize="512" />
-          <Sm Enable="1" StartAddress="#x1400" ControlByte="#x22" DefaultSize="#x200" />
-          <Sm            StartAddress="#x1800" ControlByte="#x64"                 />
-          <Sm Enable="0" StartAddress="#x2400" ControlByte="#x20" DefaultSize="0" />
+          <Sm Enable="1" StartAddress="#x1000" ControlByte="#x26" DefaultSize="512"   Virtual="1" />
+          <Sm Enable="1" StartAddress="#x1400" ControlByte="#x22" DefaultSize="#x200" Virtual="0" />
+          <Sm            StartAddress="#x1800" ControlByte="#x64"                     Virtual="true" />
+          <Sm Enable="0" StartAddress="#x2400"                    DefaultSize="0" />
         </Device>"##;
         let device: Device = from_str(s).unwrap();
         assert_eq!(
@@ -443,8 +459,8 @@ mod tests {
                     DeviceProperty::Type(DeviceType {
                         Description: "Foo".to_string(),
                         ModulePdoGroup: None,
-                        ProductCode: "#x45".to_string(),
-                        RevisionNo: "#x001".to_string(),
+                        ProductCode: Some("#x45".to_string()),
+                        RevisionNo: Some("#x001".to_string()),
                     }),
                     DeviceProperty::Name(Name {
                         LcId: None,
@@ -454,26 +470,30 @@ mod tests {
                         Sm {
                             Enable: Some(1),
                             StartAddress: "#x1000".to_string(),
-                            ControlByte: "#x26".to_string(),
+                            ControlByte: Some("#x26".to_string()),
                             DefaultSize: Some("512".to_string()),
+                            Virtual: Some("1".to_string()),
                         },
                         Sm {
                             Enable: Some(1),
                             StartAddress: "#x1400".to_string(),
-                            ControlByte: "#x22".to_string(),
+                            ControlByte: Some("#x22".to_string()),
                             DefaultSize: Some("#x200".to_string()),
+                            Virtual: Some("0".to_string()),
                         },
                         Sm {
                             Enable: None,
                             StartAddress: "#x1800".to_string(),
-                            ControlByte: "#x64".to_string(),
+                            ControlByte: Some("#x64".to_string()),
                             DefaultSize: None,
+                            Virtual: Some("true".to_string()),
                         },
                         Sm {
                             Enable: Some(0),
                             StartAddress: "#x2400".to_string(),
-                            ControlByte: "#x20".to_string(),
+                            ControlByte: None,
                             DefaultSize: Some("0".to_string()),
+                            Virtual: None,
                         }
                     ]),
                 ]
