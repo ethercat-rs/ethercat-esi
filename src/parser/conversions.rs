@@ -41,7 +41,7 @@ impl TryFrom<Vendor> for S::Vendor {
         Ok(S::Vendor {
             file_version: v.FileVersion,
             id: u32_from_hex_dec_value(&v.Id)?,
-            name: v.Name,
+            name: names_from(v.Name.unwrap_or_default())?,
             comment: v.Comment,
             url: v.URL,
             desc_url: v.DescriptionURL,
@@ -152,15 +152,14 @@ impl TryFrom<Group> for S::Group {
         let name = props
             .clone()
             .filter_map(|p| {
-                if let GroupProperty::Name(Name { value, .. }) = p {
-                    Some(value)
+                if let GroupProperty::Name(n) = p {
+                    Some(names_from(n.clone()))
                 } else {
                     None
                 }
             })
-            .cloned()
             .next()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory group name not found"))?;
+            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory group name not found"))??;
 
         let r#type = props
             .filter_map(|p| {
@@ -192,15 +191,15 @@ impl TryFrom<Device> for S::Device {
         let name = props
             .clone()
             .filter_map(|p| {
-                if let DeviceProperty::Name(Name { value, .. }) = p {
-                    Some(value)
+                if let DeviceProperty::Name(n) = p {
+                    Some(names_from(n.clone()))
                 } else {
                     None
                 }
             })
-            .cloned()
             .next()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory device name not found"))?;
+            .ok_or_else(|| Error::new(ErrorKind::Other, "Mandatory device name not found"))??;
+
         let d_type = props
             .clone()
             .filter_map(|p| {
@@ -322,9 +321,7 @@ impl TryFrom<Pdo> for S::Pdo {
             } else {
                 false
             },
-            name: pdo
-                .Name
-                .and_then(|n| if n.is_empty() { None } else { Some(n) }),
+            name: names_from(pdo.Name)?,
             sm: pdo.Sm.map(ec::SmIdx::from),
             idx: ec::PdoIdx::from(u16_from_hex_dec_value(&pdo.Index.value)?),
             entries: pdo
@@ -349,7 +346,7 @@ impl TryFrom<Entry> for S::PdoEntry {
                 },
             },
             bit_len: e.BitLen,
-            name: e.Name,
+            name: names_from(e.Name.unwrap_or_default())?,
             data_type: e.DataType,
         })
     }
@@ -373,7 +370,7 @@ impl TryFrom<Module> for S::Module {
             .collect::<Result<_>>()?;
 
         Ok(S::Module {
-            name: m.Name,
+            name: names_from(m.Name)?,
             r#type: m.Type,
             rx_pdo,
             tx_pdo,
@@ -381,6 +378,23 @@ impl TryFrom<Module> for S::Module {
             profile: None,
         })
     }
+}
+
+fn names_from(names: Vec<Name>) -> Result<S::Names> {
+    names
+        .into_iter()
+        .filter_map(|n| {
+            let lc_id = if let Some(val) = n.LcId {
+                match u16_from_hex_dec_value(&val) {
+                    Err(e) => return Some(Err(e)),
+                    Ok(val) => Some(val),
+                }
+            } else {
+                None
+            };
+            n.value.map(|name| Ok((name, lc_id)))
+        })
+        .collect()
 }
 
 fn bool_from_str(v: &str) -> Result<bool> {
